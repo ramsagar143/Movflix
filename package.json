@@ -1,0 +1,13 @@
+{
+  "name": "movflix-server",
+  "version": "1.0.0",
+  "description": "MovFlix backend - TMDB proxy",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "express": "^4.21.0"
+  }
+}
