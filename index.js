@@ -8,14 +8,23 @@ const TMDB = "https://api.themoviedb.org/3";
 const TOKEN = process.env.TMDB_TOKEN || "PASTE_YOUR_TMDB_TOKEN_HERE";
 const REGION = "IN";
 
-// ScreenScape Server Base URL
 const STREAM_BASE_URL = "https://nxsha.screenscape.me/embed";
 
-const tmdb = axios.create({
-  baseURL: TMDB,
-  headers: { Authorization: `Bearer ${TOKEN}` },
-  timeout: 20000,
-});
+app.get("/detail/:type/:id", handle(async (req) => {
+  const { type, id } = req.params;
+  const data = await cached(`detail:${type}:${id}`, () =>
+    tmdb.get(`/${type}/${id}`, {
+      params: { append_to_response: "credits,similar,watch/providers" },
+    }).then((r) => r.data), 30);
+
+  // ScreenScape Stream URL Inject karna
+  const streamUrl = type === "movie" 
+    ? `${STREAM_BASE_URL}?tmdb=${id}&type=movie`
+    : `${STREAM_BASE_URL}?tmdb=${id}&type=tv&s=1&e=1`;
+
+  return { ...data, stream_url: streamUrl };
+}));
+
 
 const cache = new Map();
 async function cached(key, fetcher, ttlMin = 10) {
