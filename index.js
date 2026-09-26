@@ -1,4 +1,4 @@
-// MovFlix Backend v3 — pagination, genres, OTT providers, filters
+// MovFlix Backend v3 — Integrated with ScreenScape Streaming Server
 const express = require("express");
 const axios = require("axios");
 
@@ -7,6 +7,9 @@ const PORT = process.env.PORT || 3000;
 const TMDB = "https://api.themoviedb.org/3";
 const TOKEN = process.env.TMDB_TOKEN || "PASTE_YOUR_TMDB_TOKEN_HERE";
 const REGION = "IN";
+
+// ScreenScape Server Base URL
+const STREAM_BASE_URL = "https://nxsha.screenscape.me/embed";
 
 const tmdb = axios.create({
   baseURL: TMDB,
@@ -93,11 +96,53 @@ app.get("/search", handle((req) =>
   }, 2)
 ));
 
-app.get("/detail/:type/:id", handle((req) =>
-  cached(`detail:${req.params.type}:${req.params.id}`, () =>
-    tmdb.get(`/${req.params.type}/${req.params.id}`, {
-      params: { append_to_response: "videos,credits,similar,watch/providers" },
-    }).then((r) => r.data), 30)
-));
+// -------------------------------------------------------------
+// DETAIL ENDPOINT (ScreenScape Streaming URL Attached)
+// -------------------------------------------------------------
+app.get("/detail/:type/:id", handle(async (req) => {
+  const { type, id } = req.params;
+  const data = await cached(`detail:${type}:${id}`, () =>
+    tmdb.get(`/${type}/${id}`, {
+      params: { append_to_response: "credits,similar,watch/providers" },
+    }).then((r) => r.data), 30);
+
+  // ScreenScape URL logic
+  const streamUrl = type === "movie" 
+    ? `${STREAM_BASE_URL}?tmdb=${id}&type=movie`
+    : `${STREAM_BASE_URL}?tmdb=${id}&type=tv&s=1&e=1`; // Season 1, Episode 1 by default
+
+  return {
+    ...data,
+    stream_url: streamUrl
+  };
+}));
+
+// -------------------------------------------------------------
+// STREAM ENDPOINT (Episodes aur Seasons specify karne ke liye)
+// Example Movies: /stream/movie/10195
+// Example TV Show: /stream/tv/84958/1/1
+// -------------------------------------------------------------
+app.get("/stream/:type/:id/:season?/:episode?", (req, res) => {
+  const { type, id, season, episode } = req.params;
+
+  let streamUrl = "";
+  if (type === "movie") {
+    streamUrl = `${STREAM_BASE_URL}?tmdb=${id}&type=movie`;
+  } else if (type === "tv") {
+    const s = season || 1;
+    const e = episode || 1;
+    streamUrl = `${STREAM_BASE_URL}?tmdb=${id}&type=tv&s=${s}&e=${e}`;
+  } else {
+    return res.status(400).json({ error: "Invalid media type. Use 'movie' or 'tv'." });
+  }
+
+  res.json({
+    id,
+    type,
+    season: season || null,
+    episode: episode || null,
+    stream_url: streamUrl
+  });
+});
 
 app.listen(PORT, () => console.log(`MovFlix server v3 running on port ${PORT}`));
