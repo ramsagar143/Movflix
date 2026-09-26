@@ -1,4 +1,4 @@
-// MovFlix Backend v3 — ScreenScape Server Integrated
+// MovFlix Backend v3 — Integrated with ScreenScape Server
 const express = require("express");
 const axios = require("axios");
 
@@ -95,7 +95,6 @@ app.get("/search", handle((req) =>
   }, 2)
 ));
 
-// Detail API with ScreenScape Stream URL
 app.get("/detail/:type/:id", handle(async (req) => {
   const { type, id } = req.params;
   const data = await cached(`detail:${type}:${id}`, () =>
@@ -103,7 +102,7 @@ app.get("/detail/:type/:id", handle(async (req) => {
       params: { append_to_response: "credits,similar,watch/providers" },
     }).then((r) => r.data), 30);
 
-  const streamUrl = type === "movie"
+  const streamUrl = type === "movie" 
     ? `${STREAM_BASE_URL}?tmdb=${id}&type=movie`
     : `${STREAM_BASE_URL}?tmdb=${id}&type=tv&s=1&e=1`;
 
